@@ -6,7 +6,7 @@ import shutil
 from sahi.predict import AutoDetectionModel, get_sliced_prediction
 import str_start
 
-st.set_page_config(layout='wide', page_title='Hack.23 inNINO')
+st.set_page_config(layout='wide', page_title='Hack.24 inNINO')
 st.header('Работа с изображениями')
 
 img_det = st.sidebar.file_uploader(

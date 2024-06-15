@@ -15,7 +15,7 @@ az_v = 0
 az_o = 0
 r = 8.73
 global ret, frame, image_h, image_w, trol
-# cap_adr = "rtsp://admin:123asdASD@192.1.1.163:554/Streaming/channels/103/"
+# cap_adr = "rtsp://user:user@192.1.1.163:554/Streaming/channels/103/"
 
 key_pov = True
 ptz = ptz_control.ptzControl()
@@ -612,9 +612,9 @@ def yolo_pred():
     yolo_res = []
     detection_model = AutoDetectionModel.from_pretrained(
         model_type='yolov8',
-        model_path='models/600n_640_emp.pt',
+        model_path='models/+300s_640_emp.pt',
         confidence_threshold=0.25,
-        device="cpu",  # or 'cuda:0'
+        device="cuda:0",  # or 'cuda:0'
     )
     while True:
         if close_:

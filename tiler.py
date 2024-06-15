@@ -17,13 +17,11 @@ def tiler(imnames, newpath, falsepath, slice_size, ext):
         labname = imname.replace("images\\", "labels\\").replace(ext, ".txt")
         labels = pd.read_csv(labname, sep=' ', names=['class', 'x1', 'y1', 'w', 'h'])
 
-        # we need to rescale coordinates from 0-1 to real image height and width
         labels[['x1', 'w']] = labels[['x1', 'w']] * width
         labels[['y1', 'h']] = labels[['y1', 'h']] * height
 
         boxes = []
 
-        # convert bounding boxes to shapely polygons. We need to invert Y and find polygon vertices from center points
         for row in labels.iterrows():
             x1 = row[1]['x1'] - row[1]['w'] / 2
             y1 = (height - row[1]['y1']) - row[1]['h'] / 2
@@ -34,7 +32,7 @@ def tiler(imnames, newpath, falsepath, slice_size, ext):
 
         counter = 0
         print('Image:', imname)
-        # create tiles and find intersection with bounding boxes for each tile
+
         for i in range((-1*height // slice_size*-1)):
             for j in range((-1*width // slice_size*-1)):
                 x1 = j * slice_size
@@ -59,20 +57,15 @@ def tiler(imnames, newpath, falsepath, slice_size, ext):
                             sliced_im.save(slice_path)
                             imsaved = True
 
-
                         new_box = inter.envelope
 
-                        # get central point for the new bounding box
                         centre = new_box.centroid
 
-                        # get coordinates of polygon vertices
                         x, y = new_box.exterior.coords.xy
 
-                        # get bounding box width and height normalized to slice size
                         new_width = (max(x) - min(x)) / slice_size
                         new_height = (max(y) - min(y)) / slice_size
 
-                        # we have to normalize central x and invert y for yolo format
                         new_x = (centre.coords.xy[0][0] - x1) / slice_size
                         new_y = (y1 - centre.coords.xy[1][0]) / slice_size
 

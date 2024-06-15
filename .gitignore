@@ -1,0 +1,7 @@
+.idea
+venv
+vid
+datasets
+tmp
+.git
+*.iml

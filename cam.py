@@ -1,5 +1,6 @@
 import cv2
 from sahi.predict import AutoDetectionModel, get_sliced_prediction
+# import str_task4
 import screeninfo
 import time
 from threading import Thread
@@ -81,9 +82,9 @@ def yolo_pred():
     yolo_res = []
     detection_model = AutoDetectionModel.from_pretrained(
         model_type='yolov8',
-        model_path='models/600n_640_emp.pt',
-        confidence_threshold=0.01,
-        device="cpu",  # or 'cuda:0'
+        model_path='models/+300s_640_emp.pt',
+        confidence_threshold=0.25,
+        device="cuda:0",  # or 'cuda:0'
     )
     while True:
         if close_:
