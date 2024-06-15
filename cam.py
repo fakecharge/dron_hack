@@ -1,6 +1,5 @@
 import cv2
 from sahi.predict import AutoDetectionModel, get_sliced_prediction
-# import str_task4
 import screeninfo
 import time
 from threading import Thread
