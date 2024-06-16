@@ -34,7 +34,7 @@ def prd_yol(model, img , slice_=8000):
                 slice_width=slice_,
                 overlap_height_ratio=0.10,
                 overlap_width_ratio=0.10,
-                perform_standard_pred=False,
+                perform_standard_pred=True,
                 postprocess_class_agnostic=True,
                 postprocess_type='GREEDYNMM'  # 'NMM', 'LSNMS', 'GREEDYNMM' or 'NMS'
             )
@@ -43,6 +43,24 @@ def prd_yol(model, img , slice_=8000):
     res_out.append(y_r)
     return res_out
 
+def plot_bb(frame_, res_out, val):
+    colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 255, 0)]
+    for bb in res_out:
+        p0, p1, label = (int(bb.bbox.minx), int(bb.bbox.miny)), \
+            (int(bb.bbox.maxx), int(bb.bbox.maxy)), \
+            bb.category.name
+
+        if 100 * bb.score.value > val:
+            frame_ = cv2.rectangle(frame_, p0, p1, colors[bb.category.id], 3)
+            cv2.putText(frame_, str(int(100 * bb.score.value)), p1,
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                    (0, 255, 0), 2, cv2.LINE_AA)
+            cv2.putText(frame_, label, (p1[0], p1[1] - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                    (0, 255, 0), 2, cv2.LINE_AA)
+
+    return frame_
+
 st.title('Обнаружение по фото')
 
 st.header('Правила пользования')
@@ -50,6 +68,8 @@ write_t('Выберете изображения, которые хотите з
 write_t('Выберете модель, на которой будет происходить инференс (+300s_640_emp.pt - наша итоговая модель)')
 write_t('После выполнения инференса, появится кнопка для скачивания архива с результатами распознавания')
 write_t('Результаты распознавания представлены в формате YOLO (id;x_center;y_center;w;h)')
+
+debug = st.checkbox('Вывод результата обнаружения', value=False)
 
 datafiles = st.sidebar.file_uploader("Upload", accept_multiple_files=True, type=['jpg', 'png'])
 model = st.sidebar.selectbox(
@@ -76,9 +96,9 @@ if datafiles is not None and len(datafiles) > 0:
         img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
         try:
-            res_out = prd_yol(model, img)
+            res_out = prd_yol(model, img, slice_=1280)
 
-            res_out_2 = prd_yol(model, img, 600)
+            res_out_2 = prd_yol(model, img, 640)
 
             res_out_ = [i + x for i, x in zip(res_out, res_out_2)]
             POSTPROCESS_NAME_TO_CLASS = {"GREEDYNMM": GreedyNMMPostprocess,
@@ -91,6 +111,10 @@ if datafiles is not None and len(datafiles) > 0:
             for i in range(0, len(res_out_)):
                 res_out_[i] = postprocess(res_out_[i])
 
+            if debug:
+                frame = plot_bb(img, res_out_[0], 25)
+                st.image(frame)
+                st.write(res_out[0])
             results.append([f'{namefile}.txt', res_out_, img.shape])
 
             # st.write(namefile)
@@ -129,6 +153,6 @@ if os.path.exists("test.txt"):
 
 if os.path.exists("archive.zip"):
     with open('archive.zip', 'rb') as f:
-       if st.download_button('Download results', f, file_name='results.zip'):
-           st.write('Thanks for downloading!')
+       if st.sidebar.download_button('Download results', f, file_name='results.zip'):
+           st.sidebar.success('Thanks for downloading!')
 
