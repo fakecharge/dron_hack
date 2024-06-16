@@ -1,3 +1,5 @@
+import zipfile
+
 import streamlit as st
 import os
 import cv2
@@ -37,8 +39,8 @@ def prd_yol(model, cl, name , slice_=8000):
     cap = cv2.VideoCapture(cl)
     len_vid = 0
     res_out = []
-    while True:
-    # for i in range(0,3):
+    # while True:
+    for i in range(0,3):
         ret, frame =cap.read()
         if ret:
             result = get_sliced_prediction(
@@ -92,7 +94,7 @@ try:
     cap = cv2.VideoCapture(cl)
     st.title('Обнаружение на видеофайле')
     val = st.sidebar.slider('Порог вероятности', 0, 100, 25)
-    len_vid, res_out = prd_yol(model, cl, '1', 1920)
+    len_vid, res_out = prd_yol(model, cl, '1', 1280)
     # st.write(res_out)
     len_vid2, res_out2 = prd_yol(model, cl, '2', 640)
     res_out_ = [i + x for i, x in zip(res_out, res_out2)]
@@ -132,6 +134,7 @@ try:
     data1 = []
     data2 = []
     data_a = []
+    results = []
 
     for i in range(0, len_vid):
         ids = [0,0,0,0,0,i]
@@ -162,12 +165,42 @@ try:
             # if ids[type_] > 0:
                 data_a.append([i, ids[type_], str(type_)])
         # print('alt')
+    for nex_i, next_data in enumerate(res_out_):
+        results.append([f'{nex_i}.txt', next_data, frame.shape])
+
     col[0].write('График обнаружения 1280')
     col[1].write('График обнаружения 640')
     col[2].write('Итоговый график')
     col[0].altair_chart(plot_alt(data1))
     col[1].altair_chart(plot_alt(data2))
     col[2].altair_chart(plot_alt(data_a))
+
+    if os.path.exists("archive.zip"):
+        os.remove("archive.zip")
+
+    for result in results:
+        with zipfile.ZipFile('archive.zip', 'a',
+                             compression=zipfile.ZIP_DEFLATED,
+                             compresslevel=9) as zf:
+            with open('test.txt', 'w') as f:
+                img_shape = result[2]
+                for j in result[1]:
+                    box = j.bbox
+                    id_class = j.category.id
+                    w = (box.maxx - box.minx) / img_shape[1]
+                    h = (box.maxy - box.miny) / img_shape[0]
+                    x = (box.minx + w / 2) / img_shape[1]
+                    y = (box.miny + h / 2) / img_shape[0]
+                    f.write(f'{int(id_class)};{x};{y};{w};{h}\n')
+
+            zf.write("test.txt", arcname=f"{str(result[0])}")
+    if os.path.exists("test.txt"):
+        os.remove('test.txt')
+
+    if os.path.exists("archive.zip"):
+        with open('archive.zip', 'rb') as f:
+            if st.sidebar.download_button('Download results', f, file_name='results.zip'):
+                st.sidebar.success('Thanks for downloading!')
 
 
 
