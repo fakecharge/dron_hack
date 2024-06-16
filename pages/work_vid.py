@@ -39,8 +39,8 @@ def prd_yol(model, cl, name , slice_=8000):
     cap = cv2.VideoCapture(cl)
     len_vid = 0
     res_out = []
-    # while True:
-    for i in range(0,3):
+    while True:
+    # for i in range(0,3):
         ret, frame =cap.read()
         if ret:
             result = get_sliced_prediction(

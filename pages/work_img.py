@@ -114,7 +114,7 @@ if datafiles is not None and len(datafiles) > 0:
             if debug:
                 frame = plot_bb(img, res_out_[0], 25)
                 st.image(frame)
-                st.write(res_out[0])
+                # st.write(res_out[0])
             results.append([f'{namefile}.txt', res_out_, img.shape])
 
             # st.write(namefile)
