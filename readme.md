@@ -14,5 +14,8 @@
 3. Выполнить команду <br> ```docker run -d -p 8080:8080 streamlitapp```
 
 ### Используя Docker Container 
-* Скачать контейнер 
+* Скачать контейнер https://disk.yandex.ru/d/0TeQ_JufidVFbg
 * Запустить используя Docker
+
+### Материалы для тестирования
+https://disk.yandex.ru/d/WEzuvB_j5_Fv2Q
