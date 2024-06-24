@@ -1,0 +1,23 @@
+function Ires = imshift(I,d,method)
+% Ires = imshift(I,d,method)
+% Циклический сдвиг изображения
+% d(1) - сдвиг по вертикали
+% d(2) - сдвиг по горизонтали
+% method:
+% 'nearest' - сдвиг на целое число пикселей
+% 'linear' - сдвиг на дробное число пикселей с линейной интерполяцией
+% 'cubic' - сдвиг на дробное число пикселей с бикубической интерполяцией
+
+
+if strcmp(method,'nearest')
+    Ires = circshift(I,round(d));
+else
+    [h,w,~] = size(I);
+    if d(1)>h || d(2)>w
+        warning('function imshift :: сдвиг больше размера изображения');
+    end
+    Ic = cat(1,I,I,I);
+    Ic = cat(2,Ic,Ic,Ic);
+    It = imtranslate(Ic,[d(2),d(1)],'method', method,'OutputView','same');
+    Ires = It(h+1:2*h,w+1:2*w,:);
+end

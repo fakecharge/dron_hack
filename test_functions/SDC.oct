@@ -1,0 +1,44 @@
+% Проверка обнаружения движущихся целей и разрезания изображения на оптимальное количество фрагментов
+clc; close all; clear all;
+
+
+filename = '.\Video\VID_20240611_064244.mp4_res2.mp4';
+% filename = '.\hackathon_additional_dataset\video\9_7.jpg.mp4';
+% filename = '.\hackathon_additional_dataset\video\2019_11_14_C0001_3922_matrice_33.png.mp4';
+% filename = '.\hackathon_additional_dataset\video\2019_11_14_C0001_3922_matrice_33.png-10x-RIFE-RIFE4.0-300fps.mp4';
+min_contrast = 0.1;
+
+v = VideoReader(filename);
+
+grid_size = 640;
+
+
+last_frame = double(readFrame(v))/255;
+[h,w,~] = size(last_frame);
+
+max_N = ceil(h/grid_size) * ceil(w/grid_size);
+
+while hasFrame(v)
+    cur_frame = double(readFrame(v))/255;
+       
+    I = abs(rgb2gray(last_frame) - rgb2gray(cur_frame)); % Переводим в gray и вычитаем 2 кадра по модулю
+    
+    I(I>0.1) = 1; I(I~=1) = 0; % Глобальный порог
+    
+    [coord_i, coord_j] = find(I==1);
+    
+ 
+    square_centre = crop_image2(coord_i, coord_j, grid_size, h,w);
+
+    image(repmat(I,[1,1,3])); axis equal
+    hold on;
+    for k=1:size(square_centre,1)
+        plot(square_centre(k,2)+[-grid_size/2, +grid_size/2, +grid_size/2, -grid_size/2, -grid_size/2], square_centre(k,1)+[-grid_size/2, -grid_size/2, +grid_size/2, +grid_size/2, -grid_size/2], '-r'); hold on;
+    end
+    title(['N=' num2str(size(square_centre,1)),'/', num2str(max_N)])
+    hold off;
+    pause(0.00001);
+    last_frame = cur_frame;
+end
+
+clear v;

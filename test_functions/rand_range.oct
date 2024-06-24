@@ -1,0 +1,7 @@
+function r = rand_range(d)
+
+
+r = rand(1)*(max(d)-min(d))+min(d);
+if max(d)==min(d)
+    r = d;
+end

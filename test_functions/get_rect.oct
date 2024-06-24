@@ -1,0 +1,15 @@
+function [RECT, class] = get_rect(filename_labels)
+
+fid = fopen(filename_labels,'r');
+C = textscan(fid,'%f');
+fclose(fid);
+
+
+RECT = zeros([length(C),4]);
+class = zeros([length(C),1]);
+for n=1:length(C)
+    rect = C{1}(2:end);
+    rect = [(rect(1)-rect(3)/2), (rect(2)-rect(4)/2), rect(3), rect(4)];
+    RECT(n,:) = rect;
+    class(n) = C{1}(1);
+end

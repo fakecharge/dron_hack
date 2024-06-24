@@ -1,0 +1,75 @@
+% Читаем БД, ищем соседние кадры, формируем БД вырезанных объектов
+clc; close all; clear all;
+
+% path = '.\hackathon_additional_dataset';
+path = '.\hd';
+
+need_class = [0,3]; % коптеры, птицы
+max_frame_diff = 0.1; % Если 2 изображения всреднем отличаются меньше чем на 10%, считаем их соседними из одного видео
+object_contrast = 0.1; % Контраст объекта относительно фона
+resize_rect_k = 1.3; % Во сколько увеличим размеченный boundingbox, чтобы захватить немного фона
+min_obj_size = 25;
+
+NEED_DFEBUG = 1;
+
+list = dir([path,'\images']);
+if ~exist([path, '\copter_obj\'],'dir'), mkdir([path, '\copter_obj\']); end
+
+for n=1:length(list)-1
+    
+    n
+    filename1 = [list(n).folder,'\',list(n).name];
+    if ~isfile(filename1),  continue; end
+    try
+        info = imfinfo(filename1); if strcmp(info.ColorType,'CMYK'), continue; end
+    catch
+        continue;
+    end
+    I1 = imread(filename1);
+    [h1,w1,c1] = size(I1);
+    filename_labels1 = [path,'\labels\',list(n).name(1:find(list(n).name=='.',1,'last')),'txt'];
+    [rect1_all,class1_all] = get_rect(filename_labels1);
+    rect = rect1_all(1,:);
+    if min(rect(3)*w1,rect(4)*h1)<min_obj_size, continue; end % Объект слишком маленький, выходим
+    class = class1_all(1);
+    rect = resize_rect(rect,1.3);
+
+    if sum(class==need_class)==0, continue; end % Нет нужных классов, выходим
+
+    rect = rect.*[w1,h1,w1,h1];
+
+    for m=n+1:n+1+5
+        filename2 = [list(m).folder,'\',list(m).name];
+        if ~isfile(filename2), continue; end
+        try
+            info = imfinfo(filename2); if strcmp(info.ColorType,'CMYK'), continue; end
+        catch
+            continue;
+        end
+        I2 = imread(filename2);
+        [h2,w2,c2] = size(I2);
+        if h1~=h2 || w1~=w2 || c1~=c2, break; end % Размеры изображений разные, выходим
+
+        if sum(abs(double(rgb2gray(I1))-double(rgb2gray(I2)))>max_frame_diff*255,'all') > h1*w1/7/7,  break;   end % кадры не соседние (объект занимает больше чем 1/7 кадра), выходим
+        
+
+        if NEED_DFEBUG==1, figure(1); imshow(cat(1,I1,I2)); end
+        
+        
+        filename_labels2 = [path,'\labels\',list(m).name(1:find(list(m).name=='.',1,'last')),'txt'];
+        [rect2_all,class2_all] = get_rect(filename_labels2);
+        rect2_all = resize_rect(rect2_all, resize_rect_k);
+        rect2_all = rect2_all.*[w1,h1,w1,h1];
+
+        intersect = polygon_intersection(rect, rect2_all);
+        if intersect, break; end
+
+        [I,mask] = crop_obj(I1,I2,rect,object_contrast,resize_rect_k);
+        if NEED_DFEBUG==1, figure(33); imshow(I.*mask); end
+        
+        imwrite(I,[path, '\copter_obj\', num2str(class),'_',list(n).name(1:find(list(n).name=='.',1,'last')), 'png'],'Alpha',mask);
+        if NEED_DFEBUG==1, pause(); end
+        break;
+    end
+    
+end

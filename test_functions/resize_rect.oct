@@ -1,0 +1,7 @@
+function rect = resize_rect(rect,d)
+
+d = d-1;
+for n=1:size(rect,1)
+    rect(n,:) = [rect(n,1)-rect(n,3)*d, rect(n,2)-rect(n,4)*d, rect(n,3)+rect(n,3)*2*d, rect(n,4)+rect(n,4)*2*d];
+end
+

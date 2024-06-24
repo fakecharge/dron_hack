@@ -1,0 +1,14 @@
+function intersection = polygon_intersection(rect1, rect2arr)
+
+intersection = 0;
+for n=1:size(rect2arr,1)
+    rect2 = rect2arr(n,:);
+    poly1 = polyshape([ rect1(1), rect1(1), rect1(1)+rect1(3),rect1(1)+rect1(3)], [rect1(2),rect1(2)+rect1(4),rect1(2)+rect1(4),rect1(2)]);
+    poly2 = polyshape([ rect2(1), rect2(1), rect2(1)+rect2(3),rect2(1)+rect2(3)], [rect2(2),rect2(2)+rect2(4),rect2(2)+rect2(4),rect2(2)]);
+    polyout = intersect(poly1,poly2);
+    if ~isempty(polyout.Vertices)
+        intersection = 1;
+        break;
+    end
+
+end

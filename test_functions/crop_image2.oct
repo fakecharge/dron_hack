@@ -1,0 +1,81 @@
+function square_centre = crop_image2(coord_i, coord_j, r, h, w)
+% square_centre = crop_image2(coord_i, coord_j, r, h, w)
+% coord_i, coord_j - вектора координат точек
+% r - размер квадрата
+% h,w - высота, ширина изображения
+
+
+NEED_DEBUG = 0;
+
+%% Разобъем изображение на квадраты по сетке
+nh = ceil(h/r);
+nw = ceil(w/r);
+
+M = length(coord_i); % Число точек
+N = nh*nw; % Максимальное число квадратов
+points_in_square = cell([N,1]); % Для каждого квадрата будет содержать вектор точек, которые в него попадают
+
+if NEED_DEBUG==1, figure(11); plot([1,1,w,w,1],[1,h,h,1,1]); hold on; plot(coord_j,coord_i,'.b'); xlabel('j'); ylabel('i'); grid on;  axis equal; axis ij; end
+    
+point_is_free = ones([M,1]);
+for n=1:N
+    a = floor((n-1)/nw)+1;
+    b = n-(a-1)*nw;
+    mini = h/nh*(a-1)+1; maxi = h/nh*(a)+1; % Границы k-го квадрата
+    minj = w/nw*(b-1)+1; maxj = w/nw*(b)+1; % Границы k-го квадрата
+    if NEED_DEBUG==1, plot([minj,maxj,maxj,minj,minj],[mini,mini,maxi,maxi,mini],'-r'); axis ij; end
+    for m=1:M % Цикл по точкам
+        if point_is_free(m)==1 &&...
+           coord_i(m) >= mini && coord_i(m) <= maxi &&...
+           coord_j(m) >= minj && coord_j(m) <= maxj % Точка еще не попадала ни в один квадрат и попадает в этот
+            points_in_square{n} = cat(1,points_in_square{n},m);
+            point_is_free(m) = 0;
+            if NEED_DEBUG==1, plot(coord_j(points_in_square{n}), coord_i(points_in_square{n}),'o'); end
+        end
+    end
+end
+
+
+%% Итеративно объединим квадраты
+while(1)
+    was_union = 0;
+    for n=1:N-1
+        if isempty(points_in_square{n}), continue; end
+        min_i = min(coord_i(points_in_square{n})); max_i = max(coord_i(points_in_square{n})); % Границы точек внутри квадрата n
+        min_j = min(coord_j(points_in_square{n})); max_j = max(coord_j(points_in_square{n}));
+        for m=n+1:N
+            if isempty(points_in_square{m}), continue; end
+            cur_min_i = min(min_i, min(coord_i(points_in_square{m}))); cur_max_i = max(max_i, max(coord_i(points_in_square{m}))); % Границы точек внутри квадратов n и m
+            cur_min_j = min(min_j, min(coord_j(points_in_square{m}))); cur_max_j = max(max_j, max(coord_j(points_in_square{m})));
+            if (cur_max_i - cur_min_i) <= r && (cur_max_j - cur_min_j) <= r % Все точки из двух квадратов можно поместить в один
+                points_in_square{n} = [points_in_square{n}; points_in_square{m}]; % Добавим в n квадрат точки из m квадрата
+                points_in_square{m} = []; % Очистим m квадрат
+                was_union = 1;
+                min_i = cur_min_i; max_i = cur_max_i; % Теперь квадрат n стал больше, запишем новые границы
+                min_j = cur_min_j; max_j = cur_max_j;
+            end
+        end
+    end
+    if was_union == 0
+        break;
+    end
+end
+
+%% Найдем центры новых объединенных квадратов
+square_centre = [];
+k = 1;
+for n=1:N
+    if isempty(points_in_square{n}), continue; end
+    square_centre(k,1) = (min(coord_i(points_in_square{n})) + max(coord_i(points_in_square{n})))/2; % края квадрата равноудалены от граничных точек
+    square_centre(k,2) = (min(coord_j(points_in_square{n})) + max(coord_j(points_in_square{n})))/2;
+    k = k+1;
+end
+
+if NEED_DEBUG==1
+    figure(777); plot([1,1,w,w,1],[1,h,h,1,1]); hold on; plot(coord_j,coord_i,'.b'); xlabel('j'); ylabel('i'); grid on; axis ij; axis equal
+    for n=1:size(square_centre,1)
+        plot(square_centre(n,2)+[-r, -r, +r, +r, -r]/2, square_centre(n,1)+[-r, +r, +r, -r, -r]/2, '-', coord_j(points_in_square{n}), coord_i(points_in_square{n}),'o');
+    end
+end
+
+

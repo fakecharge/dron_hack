@@ -1,0 +1,20 @@
+function k = make_rand_gamma_correction(M,N)
+
+k = rand(1);
+if (M<=1 && N>=1)
+    y = (M-1)/M+(N-1-(M-1)/M)*k;
+    if (y<=0)
+        k = 1/(1-y);
+    else
+        k = y+1;
+    end
+elseif (M<=1 && N<=1)
+    k = 1/M+k*(1/N-1/M);
+    k = 1/k;
+else
+    k = M+k*(N-M);
+end
+
+
+
+

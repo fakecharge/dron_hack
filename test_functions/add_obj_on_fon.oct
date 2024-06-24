@@ -1,0 +1,144 @@
+% Накладываем объекты на фон
+
+clc; close all; clear all;
+
+
+path = '.\hackathon_additional_dataset';
+% path = '.\hd';
+
+need_class = [0,3]; % коптеры, птицы
+resize_rect_k = 1.3; % Во сколько были увеличены boundingbox в картинках объектов
+M = 100; % Максимальное число объектов на одном фоне
+min_obj_size = 20; % [pix]
+max_obj_size = 2; % во сколько раз можно увеличивать объект [раз]
+max_angle = 30; % Максимальный угол поворота объекта [град]
+max_brightness = 0.2; % Максимальное изменение яркости, [раз]
+max_gamma = [0.7,1.1];
+max_blur = 3; % Максимальная половина ширины окна для размытия
+
+NEED_DEBUG = 0;
+
+list = dir([path,'\copter_obj']);
+
+M = min(M,length(list)-2);
+
+if ~exist([path,'\images_new\'],'dir'), mkdir([path,'\images_new\']); end
+if ~exist([path,'\labels_new\'],'dir'), mkdir([path,'\labels_new\']); end
+
+parfor n=3:length(list)
+n
+    if exist([path,'\images_new\',list(n).name(3:end)],"file"), continue; end
+
+    filename_fon = [path,'\images\',list(n).name(3:end)];
+    filename_labels = [path,'\labels\',list(n).name(3:find(list(n).name=='.',1,'last')),'txt'];
+    if ~exist(filename_fon,'file')
+        filename_fon = [filename_fon(1:find(filename_fon=='.',1,'last')),'jpg'];
+    end
+    if ~exist(filename_fon,'file')
+        warning(['coutdnt find image ' filename_fon]);
+        continue;
+    end
+    Ifon = imread(filename_fon);
+    [rect_all,class_all] = get_rect(filename_labels);
+
+    [h,w,~] = size(Ifon);
+
+    m = randperm(length(list)-2)+2;
+    m = m(1:M);
+    for mm=1:M
+        filename_obj = [list(m(mm)).folder,'\',list(m(mm)).name];
+        class_obj = str2double(list(m(mm)).name(1));
+        [I2,~,alpha] = imread(filename_obj); alpha = double(alpha)/255;
+        [h2,w2,~] = size(I2);
+
+        i = round(rand(1)*h); i = max(1,i); i = min(h,i);
+        j = round(rand(1)*w); j = max(1,j); j = min(w,j);
+
+        rect2 = [j,i,w2,h2];
+        if i+h2>h || j+w2>w, continue; end % Накладываемое изображение выходит зап границы
+        intersect = polygon_intersection([j/w, i/h, w2/w, h2/h], rect_all);
+        if intersect, continue; end
+
+        %% Уменьшим границы прозрачности
+        alpha = alpha.^2; 
+
+        %% Случайный масштаб
+        min_size_k = min_obj_size/min(w2,h2);
+        rand_size_k  = rand_range([max(0.1,min_size_k),max_obj_size]);
+        I2 = imresize(I2, rand_size_k);
+        alpha = imresize(alpha, rand_size_k);
+
+        %% Случайный поворот
+        rand_angle = rand_range([-max_angle,max_angle]);
+        I2 = imrotate(I2,rand_angle,'bicubic','loose');
+        alpha = imrotate(alpha,rand_angle,'nearest','loose');
+
+        %% Случайное зеркальное отражение по горизонтали
+        if rand()>0.5
+            I2 = I2(:,end:-1:1,:);
+            alpha = alpha(:,end:-1:1,:);
+        end
+
+        %% Случайное изменение яркости
+        I2 = I2*rand_range([1-max_brightness, 1+max_brightness]);
+
+        %% Случайное изменение гаммы
+        kg = make_rand_gamma_correction(max_gamma(1),max_gamma(2));
+        I2 = uint8(double(I2).^kg);
+
+        %% Случайный LUT
+        I2 = single(random_LUT(I2));
+        
+        %% Случайная резкость
+        if rand(1)>0.8
+            rand_blur = round(rand_range([0,max_blur*10]));
+            if rand_blur>0
+                I2 = imresize(I2,10);
+                I2 = imfilter(I2,fspecial('disk',rand_blur));
+                I2 = imresize(I2,1/10);
+                alpha = imresize(alpha,10);
+                alpha = imfilter(alpha,fspecial('disk',rand_blur));
+                alpha = imresize(alpha,1/10);
+            end
+        end
+
+
+        [h2,w2,~] = size(I2);
+        rect2 = [j,i,w2,h2];
+
+        intersect = polygon_intersection([j/w, i/h, w2/w, h2/h], rect_all);
+        if intersect, continue; end
+
+        if rect2(2)+rect2(4)-1>h || (rect2(1)+rect2(3)-1)>w, continue; end % Накладываемое изображение выходит зап границы
+
+
+
+        Ifon(rect2(2):rect2(2)+rect2(4)-1, rect2(1):rect2(1)+rect2(3)-1,:) = round(double(Ifon(rect2(2):rect2(2)+rect2(4)-1, rect2(1):rect2(1)+rect2(3)-1,:)).*repmat((1-alpha),[1,1,3]) + double(I2).*repmat(alpha,[1,1,3]));
+
+        rect2 = resize_rect(rect2,2-resize_rect_k);
+        rect2([1,3]) = rect2([1,3])/w; rect2([2,4]) = rect2([2,4])/h;
+        rect_all = cat(1,rect_all,rect2);
+        class_all = cat(1,class_all,class_obj);
+        
+        if NEED_DEBUG==1, figure(11); imshow(Ifon); end
+
+
+    end
+    if NEED_DEBUG==1
+        hold on;
+        for k=1:size(rect_all,1)
+            rect2 = rect_all(k,:);
+            rect2([1,3]) = rect2([1,3])*w; rect2([2,4]) = rect2([2,4])*h;
+            plot([rect2(1),rect2(1)+rect2(3),rect2(1)+rect2(3),rect2(1),rect2(1)], [rect2(2),rect2(2),rect2(2)+rect2(4),rect2(2)+rect2(4),rect2(2)],'-r');
+        end
+        hold off;
+    end
+
+    imwrite(Ifon,[path,'\images_new\',list(n).name(3:end)]);
+    fid = fopen([path,'\labels_new\',list(n).name(3:find(list(n).name=='.',1,'last')),'txt'],'w');
+    for k=1:size(rect_all,1)
+        fprintf(fid,'%d %f %f %f %f\r\n',class_all(k), rect_all(k,1)+rect_all(k,3)/2, rect_all(k,2)+rect_all(k,4)/2, rect_all(k,3), rect_all(k,4));
+    end
+    fclose(fid);
+    
+end

@@ -1,0 +1,99 @@
+% Синтезируем видео. на реальный фон накладываем цели и имитируем их движение
+
+clc; close all; clear all;
+
+path = '.\hackathon_additional_dataset';
+% path = '.\hd';
+
+need_class = [0,3]; % коптеры, птицы
+max_frame_diff = 0.1; % Если 2 изображения всреднем отличаются меньше чем на 10%, считаем их соседними из одного видео
+
+NEED_DFEBUG = 0;
+
+list = dir([path,'\images']);
+filenames = cell([length(list),1]);
+for n=1:length(list)
+    filenames{n} = list(n).name;
+end
+filenames_sort = sort_nat(filenames);
+folder = list(1).folder;
+
+
+if ~exist([path, '\video\'],'dir'), mkdir([path, '\video\']); end
+
+flag_video_alredy_writed = 0;
+for n=1:length(filenames_sort)-1
+    n
+    filename1 = [folder,'\',filenames_sort{n}];
+    if ~isfile(filename1),  continue; end
+    try
+        info = imfinfo(filename1); if strcmp(info.ColorType,'CMYK'), continue; end
+    catch
+        continue;
+    end
+    I1 = imread(filename1);
+    [h1,w1,c1] = size(I1);
+
+    flag_frame_finded = 0;
+    for m=n+1:n+1+5
+        filename2 = [folder,'\',filenames_sort{m}];
+        if ~isfile(filename2), continue; end
+        try
+            info = imfinfo(filename2); if strcmp(info.ColorType,'CMYK'), continue; end
+        catch
+            continue;
+        end
+        I2 = imread(filename2);
+        [h2,w2,c2] = size(I2);
+        if h1~=h2 || w1~=w2 || c1~=c2, break; end % Размеры изображений разные, выходим
+
+        if sum(abs(double(rgb2gray(I1))-double(rgb2gray(I2)))>max_frame_diff*255,'all') > h1*w1/3/3,  break;   end % кадры не соседние (объект занимает больше чем 1/7 кадра), выходим        
+
+        if NEED_DFEBUG==1, figure(1); imshow(cat(1,I1,I2)); end
+                
+        n=m;
+        flag_frame_finded = 1;
+        if ~flag_video_alredy_writed
+            v = VideoWriter([path, '\video\', filenames_sort{n} '.mp4'],'MPEG-4');
+            v.Quality = 95;
+            v.FrameRate = v.FrameRate;
+            open(v);
+            writeVideo(v,I1);
+            writeVideo(v,I2);
+            flag_video_alredy_writed = 1;
+        else
+            writeVideo(v,I2);
+            flag_video_alredy_writed = 1;
+        end
+        break;
+    end
+    if flag_frame_finded==0
+        flag_video_alredy_writed = 0;
+        if exist('v','var')
+            if NEED_DFEBUG==1, figure(1); montage({I1;I2}); end
+            close(v);
+        end
+    end
+end
+
+
+
+
+
+
+
+
+% rect1_all = resize_rect(rect1_all,1.3);
+% 
+% 
+%     for nn=1:size(rect1_all,1)
+%     rect = [];
+%     class = [];
+%     k=1;
+%     for mm=1:length(class1_all)
+%         if sum(need_class==class1_all(mm))>0
+%             rect(k,:) = rect1_all(mm,:);
+%             class(k) = class1_all(mm);
+%             k=k+1;
+%         end
+%     end
